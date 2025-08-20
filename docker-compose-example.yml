@@ -23,7 +23,7 @@ services:
     networks:
       - ratelimit-network
     volumes:
-      - ./examples/prom-statsd-exporter/conf.yaml:/etc/statsd-exporter/conf.yaml
+      - /c/Dev/ratelimit/examples/prom-statsd-exporter/conf.yaml:/etc/statsd-exporter/conf.yaml
 
   ratelimit:
     image: envoyproxy/ratelimit:master
@@ -38,7 +38,7 @@ services:
     networks:
       - ratelimit-network
     volumes:
-      - ./examples/ratelimit/config:/data/ratelimit/config
+      - /c/Dev/ratelimit/examples/ratelimit/config:/data/ratelimit/config
     environment:
       - USE_STATSD=true
       - STATSD_HOST=statsd
@@ -77,7 +77,7 @@ services:
       - "--mode serve"
       - "--log-level info"
     volumes:
-      - ./examples/envoy/proxy.yaml:/etc/envoy/envoy.yaml
+      - /c/Dev/ratelimit/examples/envoy/proxy.yaml:/etc/envoy/envoy.yaml
     networks:
       - ratelimit-network
     expose:
@@ -98,7 +98,7 @@ services:
       - "--mode serve"
       - "--log-level info"
     volumes:
-      - ./examples/envoy/mock.yaml:/etc/envoy/envoy.yaml
+      - /c/Dev/ratelimit/examples/envoy/mock.yaml:/etc/envoy/envoy.yaml
     networks:
       - ratelimit-network
     expose:

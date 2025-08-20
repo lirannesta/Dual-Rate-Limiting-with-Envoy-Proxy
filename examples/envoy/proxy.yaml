@@ -4,6 +4,7 @@ admin:
     socket_address:
       address: 0.0.0.0
       port_value: 8001
+
 static_resources:
   clusters:
     - name: ratelimit
@@ -21,6 +22,7 @@ static_resources:
                     socket_address:
                       address: ratelimit
                       port_value: 8081
+
     - name: mock
       connect_timeout: 1s
       type: STRICT_DNS
@@ -34,6 +36,7 @@ static_resources:
                     socket_address:
                       address: envoy-mock
                       port_value: 9999
+
   listeners:
     - address:
         socket_address:
@@ -46,11 +49,37 @@ static_resources:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 codec_type: AUTO
                 stat_prefix: ingress
+                access_log:
+                  - name: envoy.access_loggers.file
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
+                      path: "/tmp/envoy-access.log"
+                      log_format:
+                        text_format: "[%START_TIME%] \"%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%\" %RESPONSE_CODE% %RESPONSE_FLAGS% \"%REQ(USER-AGENT)%\" \"%REQ(X-FORWARDED-FOR)%\" \"%REQ(:AUTHORITY)%\" \"%UPSTREAM_HOST%\"\n"
+
                 http_filters:
+                  - name: envoy.filters.http.lua
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+                      inline_code: |
+                        function envoy_on_request(handle)
+                          local path = handle:headers():get(":path")
+                          local set_id = string.match(path, "^/api/sets/([^/]+)")
+                          if set_id then
+                            handle:headers():add("x-set-id", set_id)
+                            if string.match(path, "^/api/sets/[^/]+/internal/config$") then
+                              handle:headers():add("x-set-scope-minute", "internal-config")
+                              handle:headers():add("x-set-scope-second", "internal-config")
+                            else
+                              handle:headers():add("x-set-scope-minute", "general")
+                            end
+                          end
+                        end
+
                   - name: envoy.filters.http.ratelimit
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
-                      domain: rl
+                      domain: epm
                       request_type: external
                       stage: 0
                       rate_limited_as_resource_exhausted: true
@@ -61,9 +90,11 @@ static_resources:
                           envoy_grpc:
                             cluster_name: ratelimit
                         transport_api_version: V3
+
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
                 route_config:
                   name: route
                   virtual_hosts:
@@ -72,89 +103,36 @@ static_resources:
                         - "*"
                       routes:
                         - match:
-                            prefix: /test
+                            safe_regex:
+                              regex: "^/api/sets/([^/]+)/internal/config$"
                           route:
                             cluster: mock
                             rate_limits:
                               - actions:
-                                  - source_cluster: {} # This action's value is populated by the "service-cluster" arg passed in when starting Envoy. In this example, it's "proxy" (see docker-compose-example.yml)
-                                  - destination_cluster: {} # This action's value is populated by the value set in the above egress "cluster" field -- "mock"
+                                  - request_headers:
+                                      header_name: "x-set-id"
+                                      descriptor_key: "set-id"
+                                  - request_headers:
+                                      header_name: "x-set-scope-minute"
+                                      descriptor_key: "scope-minute"
+                              - actions:
+                                  - request_headers:
+                                      header_name: "x-set-id"
+                                      descriptor_key: "set-id"
+                                  - request_headers:
+                                      header_name: "x-set-scope-second"
+                                      descriptor_key: "scope-second"
+
                         - match:
-                            prefix: /header
+                            safe_regex:
+                              regex: "^/api/sets/([^/]+)(/.*)?"
                           route:
                             cluster: mock
                             rate_limits:
                               - actions:
                                   - request_headers:
-                                      header_name: "foo"
-                                      descriptor_key: "foo"
-                        - match:
-                            prefix: /twoheader
-                          route:
-                            cluster: mock
-                            rate_limits:
-                              - actions:
+                                      header_name: "x-set-id"
+                                      descriptor_key: "set-id"
                                   - request_headers:
-                                      header_name: "foo"
-                                      descriptor_key: "foo"
-                                  - request_headers:
-                                      header_name: "bar"
-                                      descriptor_key: "bar"
-                              - actions:
-                                  - request_headers:
-                                      header_name: "foo"
-                                      descriptor_key: "foo"
-                                  - request_headers:
-                                      header_name: "baz"
-                                      descriptor_key: "baz"
-                        - match:
-                            prefix: /fourheader
-                          route:
-                            cluster: mock
-                            rate_limits:
-                              - actions:
-                                  - request_headers:
-                                      header_name: "foo"
-                                      descriptor_key: "foo"
-                                  - request_headers:
-                                      header_name: "bar"
-                                      descriptor_key: "bar"
-                              - actions:
-                                  - request_headers:
-                                      header_name: "source_cluster"
-                                      descriptor_key: "source_cluster"
-                                  - request_headers:
-                                      header_name: "destination_cluster"
-                                      descriptor_key: "destination_cluster"
-                        - match:
-                            prefix: /fiveheader
-                          route:
-                            cluster: mock
-                            rate_limits:
-                              - actions:
-                                  - request_headers:
-                                      header_name: "foo"
-                                      descriptor_key: "foo"
-                                  - request_headers:
-                                      header_name: "bar"
-                                      descriptor_key: "bar"
-                              - actions:
-                                  - request_headers:
-                                      header_name: "source_cluster"
-                                      descriptor_key: "source_cluster"
-                                  - request_headers:
-                                      header_name: "destination_cluster"
-                                      descriptor_key: "destination_cluster"
-                              - actions:
-                                  - request_headers:
-                                      header_name: "category"
-                                      descriptor_key: "category"
-                        - match:
-                            prefix: /unspec
-                          route:
-                            cluster: mock
-                            rate_limits:
-                              - actions:
-                                  - request_headers:
-                                      header_name: "unspec"
-                                      descriptor_key: "unspec"
+                                      header_name: "x-set-scope-minute"
+                                      descriptor_key: "scope-minute"

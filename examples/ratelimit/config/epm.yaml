@@ -1,0 +1,41 @@
+domain: epm
+descriptors:
+  - key: set-id
+    value: "123" #only for this specific set-id, I want to limit it to 7 requests per minute, on all types of calls:
+    # curl -i http://localhost:8888/api/sets/123/other
+    # curl -i http://localhost:8888/api/sets/123/internal/config
+    descriptors:
+      - key: scope-minute
+        value: general
+        rate_limit:
+          unit: minute
+          requests_per_unit: 7
+          shadow_mode: false
+      - key: scope-minute
+        value: internal-config
+        rate_limit:
+          unit: minute
+          requests_per_unit: 7
+          shadow_mode: false
+  - key: set-id
+    descriptors:
+      - key: scope-minute
+        value: internal-config
+        rate_limit:
+          unit: minute
+          requests_per_unit: 5
+          shadow_mode: false
+
+      - key: scope-second
+        value: internal-config
+        rate_limit:
+          unit: second
+          requests_per_unit: 1
+          shadow_mode: false
+
+      - key: scope-minute
+        value: general
+        rate_limit:
+          unit: minute
+          requests_per_unit: 10
+          shadow_mode: false
