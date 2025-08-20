@@ -7,7 +7,7 @@ export CONFIG_TYPE=GRPC_XDS_SOTW
 docker-compose -f docker-compose-example.yml --profile xds-config up --build --remove-orphans
 ```
 
-The docker-compose builds and runs the example server along with Rate limit server. The example server serves a configuration defined in [`resource.go`](resource.go). If everything works correctly, you can follow the [examples in project top-level README.md file](../../README.md#examples).
+The docker-compose builds and runs the example server along with Rate limit server. The example server serves a configuration defined in [`resource.go`](resource.go). If everything works correctly, you can follow the [examples in project top-level README.md file](../../README-ORIGINAL.md#examples).
 
 ## Files
 
