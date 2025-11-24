@@ -22,7 +22,7 @@ require (
 	github.com/lyft/gostats v0.4.14
 	github.com/mediocregopher/radix/v3 v3.8.1
 	github.com/prometheus/client_golang v1.19.1
-	github.com/prometheus/client_model v0.6.0
+	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/statsd_exporter v0.26.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
@@ -35,7 +35,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.28.0
 	golang.org/x/net v0.36.0
 	google.golang.org/grpc v1.65.0
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
 )
 
